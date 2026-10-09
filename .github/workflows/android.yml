@@ -25,19 +25,20 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-
       - name: Grant execute permission
+        working-directory: android-app
         run: chmod +x gradlew
 
       - name: Clean project
+        working-directory: android-app
         run: ./gradlew clean
 
       - name: Run lint
+        working-directory: android-app
         run: ./gradlew lint
 
       - name: Build and test
+        working-directory: android-app
         run: ./gradlew build
 
       - name: Upload APK files
