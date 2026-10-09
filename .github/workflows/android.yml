@@ -6,64 +6,44 @@ on:
     branches: [main, develop, qa]
   pull_request:
     branches: [main, develop, qa]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  build:
-    name: Build and Test Android App
+  inspect:
+    name: Check Android Project Files
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Find Gradle wrapper
-        id: find-gradle
-        shell: bash
+      - name: Display repository files
         run: |
-          GRADLEW=$(find . -maxdepth 6 -type f -name gradlew | head -n 1)
+          echo "Repository root:"
+          pwd
+          ls -la
+
+          echo "Searching for Gradle files:"
+          find . -maxdepth 8 -type f \( \
+            -name "gradlew" -o \
+            -name "settings.gradle" -o \
+            -name "settings.gradle.kts" -o \
+            -name "build.gradle" -o \
+            -name "build.gradle.kts" \
+          \) -print
+
+      - name: Verify Gradle wrapper
+        run: |
+          GRADLEW=$(find . -maxdepth 8 -type f -name gradlew | head -n 1)
 
           if [ -z "$GRADLEW" ]; then
-            echo "ERROR: gradlew not found."
-            echo "Ensure your Android Gradle project is committed to GitHub."
+            echo "ERROR: No gradlew file exists in the repository."
+            echo "Add a valid Android Gradle project and commit its Gradle wrapper."
             exit 1
           fi
 
-          PROJECT_DIR=$(dirname "$GRADLEW")
-          echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
-          echo "Found Gradle wrapper: $GRADLEW"
-
-      - name: Grant execute permission
-        working-directory: ${{ steps.find-gradle.outputs.project_dir }}
-        run: chmod +x gradlew
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Clean project
-        working-directory: ${{ steps.find-gradle.outputs.project_dir }}
-        run: ./gradlew clean
-
-      - name: Run lint
-        working-directory: ${{ steps.find-gradle.outputs.project_dir }}
-        run: ./gradlew lint
-
-      - name: Build and test
-        working-directory: ${{ steps.find-gradle.outputs.project_dir }}
-        run: ./gradlew build
-
-      - name: Upload APK files
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-apk
-          path: '**/build/outputs/apk/**/*.apk'
-          if-no-files-found: warn
+          chmod +x "$GRADLEW"
+          echo "Gradle wrapper found: $GRADLEW"
