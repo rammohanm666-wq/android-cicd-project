@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   build:
-    name: Build and test Android app
+    name: Build and Test Android App
     runs-on: ubuntu-latest
 
     steps:
@@ -25,20 +25,39 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Find Gradle wrapper
+        id: find-gradle
+        shell: bash
+        run: |
+          GRADLEW=$(find . -maxdepth 6 -type f -name gradlew | head -n 1)
+
+          if [ -z "$GRADLEW" ]; then
+            echo "ERROR: gradlew not found."
+            echo "Ensure your Android Gradle project is committed to GitHub."
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$GRADLEW")
+          echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
+          echo "Found Gradle wrapper: $GRADLEW"
+
       - name: Grant execute permission
-        working-directory: android-app
+        working-directory: ${{ steps.find-gradle.outputs.project_dir }}
         run: chmod +x gradlew
 
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Clean project
-        working-directory: android-app
+        working-directory: ${{ steps.find-gradle.outputs.project_dir }}
         run: ./gradlew clean
 
       - name: Run lint
-        working-directory: android-app
+        working-directory: ${{ steps.find-gradle.outputs.project_dir }}
         run: ./gradlew lint
 
       - name: Build and test
-        working-directory: android-app
+        working-directory: ${{ steps.find-gradle.outputs.project_dir }}
         run: ./gradlew build
 
       - name: Upload APK files
@@ -46,5 +65,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: app/build/outputs/apk/**/*.apk
+          path: '**/build/outputs/apk/**/*.apk'
           if-no-files-found: warn
